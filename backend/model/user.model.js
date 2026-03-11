@@ -16,7 +16,10 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, "Password is required"],
+    required: function() {
+      return this.provider === "local";
+      
+    },
     minlength: 6
   },
   role: {
@@ -35,15 +38,25 @@ const userSchema = new mongoose.Schema({
         default:Date.now
       }
     }
-  ]
    
+  ],
+   provider:{
+      type:String,
+      default:"local",
+      enum:["local","google","facebook"]
+    },
+   googleId: {
+    type: String,
+    default: null
+  }
+ 
   
  
 },{timestamps:true});
 
 
 userSchema.pre("save", async function() {
-  if (!this.isModified("password")) {
+  if (!this.isModified("password") || this.provider!=="local") {
     return;
   }
   const salt = await bcrypt.genSalt(10);

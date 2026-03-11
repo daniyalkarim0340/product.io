@@ -1,6 +1,6 @@
 import { useState } from "react";
 // Import Link and useLocation for seamless routing
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
   Package, 
@@ -12,8 +12,12 @@ import {
   ChevronRight,
   ArrowUpRight
 } from "lucide-react";
+import authApi from "../../Api/authApi";  
+import useAuthHook from "../../hooks/useUser";
 
 const Dashboard = () => {
+  const { user, accessToken, setUser, setAccessToken } = useAuthHook();
+  const nagivate = useNavigate();
   const location = useLocation(); // Gets the current URL path
 
   const menuItems = [
@@ -29,6 +33,19 @@ const Dashboard = () => {
     { label: "Total Orders", value: "75", growth: "+5%", color: "text-emerald-600", bg: "bg-emerald-50" },
     { label: "Total Users", value: "45", growth: "+18%", color: "text-purple-600", bg: "bg-purple-50" },
   ];
+
+  const handlelogout = async() => {
+    try {
+     const res = await authApi.logout
+      setUser(null)
+      setAccessToken(null)
+      nagivate("/login")
+      
+    } catch (error) {
+      console.log(error);
+      
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-900">
@@ -70,7 +87,7 @@ const Dashboard = () => {
         </div>
 
         <div className="mt-auto p-8 border-t border-slate-100">
-          <button className="flex items-center gap-3 text-slate-500 hover:text-red-600 font-semibold transition-colors w-full group">
+          <button onClick={handlelogout} className="flex items-center gap-3 text-slate-500 hover:text-red-600 font-semibold transition-colors w-full group">
             <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
             <span>Logout</span>
           </button>

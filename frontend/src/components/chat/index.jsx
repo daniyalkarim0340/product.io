@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { io } from "socket.io-client";
 import useAuthHook from "../../hooks/useUser";
 
+
 function Chat() {
   const { user, loading } = useAuthHook();
 
@@ -18,7 +19,7 @@ function Chat() {
 
   // socket connection
   useEffect(() => {
-    socketRef.current = io("http://localhost:8080", {
+    socketRef.current = io("http://localhost:10000", {
       withCredentials: true
     });
 

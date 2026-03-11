@@ -121,4 +121,28 @@ const Logoutuser = Asynchandler(async (req, res, next) => {
   });
 });
 
-export { RegisterUser, Loginuser, ReGernateAccessToken, Logoutuser };
+const GoogleAuth=Asynchandler(async(req,res,next)=>{
+ try {
+   const user= req.user
+  const accessToken = GenerateAccessToken(user);
+  const refreshToken = GenerateRefreshToken(user);
+
+  user.refreshToken.push({
+    token: refreshToken,
+    createdAt: Date.now(),
+  });
+
+  await user.save({ validateBeforeSave: false });
+
+  res.cookie("refreshtoken", refreshToken, CookiesOption);
+  res.redirect(`http://localhost:5173/auth/sucess?accessToken=${accessToken}`)
+
+
+
+
+ }catch (error) {
+  res.redirect(`http://localhost:5173/auth/failure?error=${error.message}`)
+  
+ }
+})
+export { RegisterUser, Loginuser, ReGernateAccessToken, Logoutuser ,GoogleAuth};
