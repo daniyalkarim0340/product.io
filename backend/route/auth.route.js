@@ -13,12 +13,18 @@ authroute.post("/login",Validate(loginSchema),Loginuser)
 authroute.post("/generateaccesstoken",ReGernateAccessToken)
 authroute.get("/logout",AuthMiddleware,Logoutuser)
 
-authroute.get("/google",passport.authenticate("google",{
-    scope:["profile","email"]
-}))
-authroute.get("/google/callback",passport.authenticate("google",{
-    failureRedirect:"http://localhost:5173/auth/failure",
-    successRedirect:"http://localhost:5173/auth/sucess"
-}),GoogleAuth)
+authroute.get("/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"]
+  })
+);
+
+authroute.get("/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: "http://localhost:5173/auth?error=google_auth_failed",
+    session: false
+  }),
+  GoogleAuth
+);
 
 export default authroute

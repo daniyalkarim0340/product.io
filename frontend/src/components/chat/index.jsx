@@ -19,7 +19,7 @@ function Chat() {
 
   // socket connection
   useEffect(() => {
-    socketRef.current = io("http://localhost:10000", {
+    socketRef.current = io("http://localhost:8080", {
       withCredentials: true
     });
 

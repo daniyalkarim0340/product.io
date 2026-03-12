@@ -38,7 +38,7 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] px-4 font-sans">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -62,7 +62,7 @@ const LoginPage = () => {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          
+
           {/* Email Input */}
           <div className="space-y-2">
             <label className="text-sm font-semibold text-gray-700 ml-1">Email Address</label>
@@ -94,7 +94,7 @@ const LoginPage = () => {
                 ${errors.password ? "border-red-400 bg-red-50" : "border-gray-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50"}`}
                 placeholder="••••••••"
               />
-              <button 
+              <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
@@ -115,21 +115,24 @@ const LoginPage = () => {
             {isSubmitting ? (
               <Loader2 className="animate-spin" size={20} />
             ) : (
-              "Sign in"
+              "login"
             )}
           </button>
-              <button 
-              type="button" 
-              onClick={() => navigate("/google")}
-              className="text-blue-600 font-bold hover:underline"
-            >
-              continute with google
-            </button>
+      <button
+  type="button"
+  onClick={() => window.location.href = "http://localhost:8080/api/v1/google"}
+  // This tells the browser it's okay to send the origin info to your backend
+  referrerPolicy="no-referrer-when-downgrade" 
+  className="..." 
+>
+  <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+  Continue with Google
+</button>
           {/* Footer Link */}
           <p className="text-center text-sm text-gray-500 mt-6">
             Don't have an account?{" "}
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => navigate("/register")}
               className="text-blue-600 font-bold hover:underline"
             >

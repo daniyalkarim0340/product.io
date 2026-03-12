@@ -8,63 +8,72 @@ const userSchema = new mongoose.Schema({
     minlength: 3,
     maxlength: 50
   },
+
   email: {
     type: String,
     required: [true, "Email is required"],
     unique: true,
-    lowercase: true
+    lowercase: true,
+    match: [/^\S+@\S+\.\S+$/, "Please use a valid email"]
   },
+
   password: {
     type: String,
-    required: function() {
+    minlength: 6,
+    select: false,
+    required: function () {
       return this.provider === "local";
-      
-    },
-    minlength: 6
+    }
   },
+
   role: {
     type: String,
-    enum: ["user", "admin", "business"], 
+    enum: ["user", "admin", "business"],
     default: "user"
   },
-  refreshToken:[
+
+  refreshToken: [
     {
-      token:{
-        type:String,
-        required:true
+      token: {
+        type: String,
+        required: true
       },
-      createdAt:{
-        type:Date,
-        default:Date.now
+      createdAt: {
+        type: Date,
+        default: Date.now
       }
     }
-   
   ],
-   provider:{
-      type:String,
-      default:"local",
-      enum:["local","google","facebook"]
-    },
-   googleId: {
+
+  provider: {
+    type: String,
+    default: "local",
+    enum: ["local", "google", "facebook"]
+  },
+
+  googleId: {
     type: String,
     default: null
+  },
+
+  avatar: {
+    type: String
   }
- 
-  
- 
-},{timestamps:true});
+
+}, { timestamps: true });
 
 
-userSchema.pre("save", async function() {
-  if (!this.isModified("password") || this.provider!=="local") {
-    return;
-  }
+userSchema.pre("save", async function () {
+  if (!this.isModified("password") || this.provider !== "local") return;
+
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-userSchema.methods.comparePassword = async function(enteredPassword) {
+
+userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
+
 
 export const User = mongoose.model("User", userSchema);

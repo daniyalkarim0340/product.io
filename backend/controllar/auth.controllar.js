@@ -1,34 +1,25 @@
-import { UserEvent } from "../event/event.constant.js";
-import eventBus from "../event/eventBus.js";
+// controllers/auth.controller.js
 import Asynchandler from "../handle/asynhandler.js";
 import CustomError from "../handle/customerror.js";
-import { User } from "../model/user.model.js";
+import {User} from "../model/user.model.js";
+import { GenerateAccessToken, GenerateRefreshToken } from "../utils/gernatetoken.js";
 import CookiesOption from "../utils/cookies.js";
-import { GenerateRefreshToken, GenerateAccessToken } from "../utils/gernatetoken.js";
 import jwt from "jsonwebtoken";
 
-// User Register Controller
+// -------------------- Register User --------------------
 const RegisterUser = Asynchandler(async (req, res, next) => {
   const { name, email, password, role } = req.body;
 
-  const existingUser = await User.findOne({ email: email });
+  const existingUser = await User.findOne({ email });
   if (existingUser) {
-    return res.status(400).json({
-      success: false,
-      message: "Email is already registered",
-    });
+    return next(new CustomError(400, "Email is already registered"));
   }
 
-  const user = await User.create({
-    name,
-    email,
-    password,
-    role,
-  });
+  const user = await User.create({ name, email, password, role });
 
-  res.status(201).json({
+  return res.status(201).json({
     success: true,
-    message: "User registered successfully and email sent to your email",
+    message: "User registered successfully",
     data: {
       _id: user._id,
       name: user.name,
@@ -36,31 +27,23 @@ const RegisterUser = Asynchandler(async (req, res, next) => {
       role: user.role,
     },
   });
-
-  eventBus.emit(UserEvent.REGISTER, user);
 });
 
+// -------------------- Login User --------------------
 const Loginuser = Asynchandler(async (req, res, next) => {
   const { email, password } = req.body;
 
   const user = await User.findOne({ email });
-  if (!user) {
-    return next(new CustomError(400, "Invalid email or password"));
-  }
+  if (!user) return next(new CustomError(400, "Invalid email or password"));
 
   const isPasswordMatched = await user.comparePassword(password);
-  if (!isPasswordMatched) {
-    return next(new CustomError(400, "Invalid email or password"));
-  }
+  if (!isPasswordMatched) return next(new CustomError(400, "Invalid email or password"));
 
   const accessToken = GenerateAccessToken(user);
   const refreshToken = GenerateRefreshToken(user);
 
-  user.refreshToken.push({
-    token: refreshToken,
-    createdAt: Date.now(),
-  });
-
+  if (!user.refreshToken) user.refreshToken = [];
+  user.refreshToken.push({ token: refreshToken, createdAt: new Date() });
   await user.save({ validateBeforeSave: false });
 
   res.cookie("refreshtoken", refreshToken, CookiesOption);
@@ -78,71 +61,85 @@ const Loginuser = Asynchandler(async (req, res, next) => {
   });
 });
 
+// -------------------- Regenerate Access Token --------------------
 const ReGernateAccessToken = Asynchandler(async (req, res, next) => {
-  const refreshToken = req.cookies.refreshtoken;
-  if (!refreshToken) {
-    return next(new CustomError(401, "Unauthorized"));
-  }
+  try {
+    const refreshToken = req.cookies.refreshtoken;
+    if (!refreshToken) return next(new CustomError(401, "Refresh token missing"));
 
-  const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-  const user = await User.findById(decoded.userId);
-  if (!user) {
-    return next(new CustomError(401, "Unauthorized"));
-  }
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    } catch (err) {
+      return next(new CustomError(401, "Invalid or expired refresh token"));
+    }
 
-  const accessToken = GenerateAccessToken(user);
-  return res.status(200).json({
-    success: true,
-    message: "user login success fully",
-    token: accessToken,
-    user: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    },
-  });
+    const user = await User.findOne({ _id: decoded.userId, "refreshToken.token": refreshToken });
+    if (!user) return next(new CustomError(401, "Unauthorized"));
+
+    const accessToken = GenerateAccessToken(user);
+    return res.status(200).json({
+      success: true,
+      token: accessToken,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("ReGernateAccessToken Error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 });
 
+// -------------------- Logout User --------------------
 const Logoutuser = Asynchandler(async (req, res, next) => {
   const user = req.user;
-  user.refreshToken = null;
+  if (!user) return next(new CustomError(401, "User not found"));
+
+  user.refreshToken = [];
   await user.save({ validateBeforeSave: false });
 
   res.clearCookie("refreshtoken", {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
   });
 
   return res.status(200).json({
     success: true,
-    message: "User logout successfully",
+    message: "User logged out successfully",
   });
 });
 
-const GoogleAuth=Asynchandler(async(req,res,next)=>{
- try {
-   const user= req.user
-  const accessToken = GenerateAccessToken(user);
-  const refreshToken = GenerateRefreshToken(user);
+// -------------------- Google OAuth --------------------
+const GoogleAuth = Asynchandler(async (req, res, next) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return next(new CustomError(401, "User not found"));
+    }
+    const accessToken = GenerateAccessToken(user);
+    const refreshToken = GenerateRefreshToken(user);
 
-  user.refreshToken.push({
-    token: refreshToken,
-    createdAt: Date.now(),
-  });
+    if (!user.refreshToken) user.refreshToken = [];
+    user.refreshToken.push({ token: refreshToken, createdAt: new Date() });
+    await user.save({ validateBeforeSave: false });
 
-  await user.save({ validateBeforeSave: false });
+    res.cookie("refreshtoken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 15 * 60 * 60 * 1000
+    });
 
-  res.cookie("refreshtoken", refreshToken, CookiesOption);
-  res.redirect(`http://localhost:5173/auth/sucess?accessToken=${accessToken}`)
+    res.redirect(`http://localhost:5173/auth?success=true&accessToken=${accessToken}`);
+  } catch (error) {
+    res.redirect(`http://localhost:5173/auth?error=${encodeURIComponent(error.message)}`);
+  }
+});
 
+export { RegisterUser, Loginuser, ReGernateAccessToken, Logoutuser, GoogleAuth };
 
-
-
- }catch (error) {
-  res.redirect(`http://localhost:5173/auth/failure?error=${error.message}`)
-  
- }
-})
-export { RegisterUser, Loginuser, ReGernateAccessToken, Logoutuser ,GoogleAuth};

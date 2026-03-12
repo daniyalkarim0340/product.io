@@ -45,35 +45,37 @@ export const AuthProvider = ({ children }) => {
 
   // Response interceptor to refresh token
   useLayoutEffect(() => {
-    const responseInterceptor = api.interceptors.response.use(
-      (res) => res,
-      async (error) => {
-        const failedRequest = error.config;
-        if (error.response?.status === 401 && !failedRequest._retry) {
-          failedRequest._retry = true;
-          try {
-            const res = await authApi.refreshToken();
-            const token = getTokenFromResponse(res.data);
-            if (!token) {
-              throw new Error("No token found in refresh response");
-            }
+  const responseInterceptor = api.interceptors.response.use(
+    (res) => res,
+    async (error) => {
+      const originalRequest = error.config;
+      
+      if (error.response?.status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true;
+        
+        try {
+          const res = await authApi.refreshToken(); // Use a separate Axios instance here
+          const token = getTokenFromResponse(res.data);
+          
+          if (token) {
             setAccessToken(token);
             setUser(getUserFromResponse(res.data));
-            failedRequest.headers.Authorization = `Bearer ${token}`;
-            return api.request(failedRequest);
-          } catch (err) {
-            setAccessToken(null);
-            setUser(null);
-            return Promise.reject(err);
+            
+            // Critical: Use the NEW token directly in the retry header
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest); 
           }
+        } catch (refreshError) {
+          setAccessToken(null);
+          setUser(null);
+          return Promise.reject(refreshError);
         }
-        return Promise.reject(error);
       }
-    );
-    return () => {
-      api.interceptors.response.eject(responseInterceptor);
-    };
-  }, []);
+      return Promise.reject(error);
+    }
+  );
+  return () => api.interceptors.response.eject(responseInterceptor);
+}, []); // Empty dependency array is correct here to avoid re-binding
 
   useEffect(() => {
     if (accessToken) {

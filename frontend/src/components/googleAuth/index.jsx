@@ -1,35 +1,47 @@
-import  { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from "react-router-dom";
-import  useAuthHook  from "../../hooks/useUser";
+import useAuthHook from "../../hooks/useUser";
 
 const GoogleAuth = () => {
-    const navigate = useNavigate(); // Fixed spelling
+    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { setaccessToken } = useAuthHook();
+    const { setAccessToken } = useAuthHook();
+    // Use a ref to prevent the effect from running twice in React Strict Mode
+    const hasProcessed = useRef(false);
 
     useEffect(() => {
+        if (hasProcessed.current) return;
+
         const accessToken = searchParams.get("accessToken");
+        const success = searchParams.get("success");
         const error = searchParams.get("error");
 
         if (error) {
-            // Fixed the template literal syntax
-            navigate(`/login?error=${encodeURIComponent(error)}`);
+            console.error("Auth Error:", error);
+            navigate(`/login?error=${encodeURIComponent(error)}`, { replace: true });
             return;
         }
 
-        if (accessToken) {
-            setaccessToken(accessToken);
-            navigate("/dashboard");
+        if (success === "true" && accessToken) {
+            hasProcessed.current = true;
+            
+            // 1. Store the token
+            setAccessToken(accessToken);
+            
+            // 2. Log and Navigate
+            console.log("Google authentication successful");
+            
+            // replace: true prevents the user from clicking "back" into this loading screen
+            navigate("/dashboard", { replace: true }); 
         } else {
-            // Optional: If there's no token, redirect to login
-            setaccessToken(null);
-            navigate("/login");
+            navigate("/login", { replace: true });
         }
-    }, [searchParams, navigate, setaccessToken]); // Added dependency array
+    }, [searchParams, navigate, setAccessToken]);
 
     return (
-        <div className="flex h-screen items-center justify-center">
-            <p>Authenticating, please wait...</p>
+        <div className="flex h-screen flex-col items-center justify-center bg-gray-50">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+            <p className="mt-4 font-medium text-gray-600">Completing login, please wait...</p>
         </div>
     );
 };

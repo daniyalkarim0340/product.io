@@ -1,0 +1,1 @@
+# Login 500 Fix - CustomError Typo\n\n- [x] backend/handle/customerror.js: statuscode → statusCode ✅\n\n**Next:**\n- [ ] 1. Restart backend: lsof -ti:8080 | xargs kill -9 && cd backend && node server.js\n- [ ] 2. Test register: http://localhost:5174/register → create user\n- [ ] 3. Login with new user → 200 success\n\n**Expected:** Invalid login now 400, valid 200.
